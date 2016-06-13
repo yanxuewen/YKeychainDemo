@@ -11,16 +11,16 @@
 @implementation YKeychain
 
 + (NSMutableDictionary *)getKeychainQuery:(NSString *)key forAccessGroup:(NSString *)group{
-    NSMutableDictionary *keychainQuery = @{(__bridge id)kSecClass           : (__bridge id)kSecClassGenericPassword,
+    NSMutableDictionary *query = @{(__bridge id)kSecClass                   : (__bridge id)kSecClassGenericPassword,
                                           (__bridge id)kSecAttrService      : key,
                                           (__bridge id)kSecAttrAccount      : key,
                                           (__bridge id)kSecAttrAccessible   : (__bridge id)kSecAttrAccessibleAfterFirstUnlock
                                           }.mutableCopy;
     if (group != nil) {
-        [keychainQuery setObject:[self getFullAccessGroup:group] forKey:(__bridge id)kSecAttrAccessGroup];
+        [query setObject:[self getFullAccessGroup:group] forKey:(__bridge id)kSecAttrAccessGroup];
     }
     
-    return keychainQuery;
+    return query;
 }
 
 + (NSString *)getFullAccessGroup:(NSString *)group
@@ -55,7 +55,7 @@
                 if (status == errSecSuccess) {
                     NSString *accessGroup = [(__bridge NSDictionary *)result objectForKey:(__bridge NSString *)kSecAttrAccessGroup];
                     NSArray *components = [accessGroup componentsSeparatedByString:@"."];
-                    NSLog(@"components %@",components);
+//                    NSLog(@"components %@",components);
                     _bundleSeedIdentifier = [[components objectEnumerator] nextObject];
                     CFRelease(result);
                 }
@@ -74,8 +74,7 @@
 }
 
 + (BOOL)setValue:(id)value forKey:(NSString *)key forAccessGroup:(NSString *)group{
-    NSMutableDictionary *keychainQuery = [self getKeychainQuery:key forAccessGroup:group];
-    
+    NSMutableDictionary *query = [self getKeychainQuery:key forAccessGroup:group];
     [self deleteValueForKey:key forAccessGroup:group];
     NSData *data = nil;
     @try {
@@ -85,8 +84,8 @@
         return NO;
     }
     
-    [keychainQuery setObject:data forKey:(__bridge id)kSecValueData];
-    OSStatus result = SecItemAdd((__bridge CFDictionaryRef)keychainQuery, NULL);
+    [query setObject:data forKey:(__bridge id)kSecValueData];
+    OSStatus result = SecItemAdd((__bridge CFDictionaryRef)query, NULL);
     return result == errSecSuccess;
 }
 
@@ -95,8 +94,8 @@
 }
 
 + (BOOL)deleteValueForKey:(NSString *)key forAccessGroup:(NSString *)group{
-    NSMutableDictionary *keychainQuery = [self getKeychainQuery:key forAccessGroup:group];
-    OSStatus result = SecItemDelete((__bridge CFDictionaryRef)keychainQuery);
+    NSMutableDictionary *query = [self getKeychainQuery:key forAccessGroup:group];
+    OSStatus result = SecItemDelete((__bridge CFDictionaryRef)query);
     return result == errSecSuccess;
 }
 
@@ -106,11 +105,11 @@
 
 + (id)valueForKey:(NSString *)key forAccessGroup:(NSString *)group{
     id value = nil;
-    NSMutableDictionary *keychainQuery = [self getKeychainQuery:key forAccessGroup:group];
+    NSMutableDictionary *query = [self getKeychainQuery:key forAccessGroup:group];
     CFDataRef keyData = NULL;
-    [keychainQuery setObject:(__bridge id)kCFBooleanTrue forKey:(__bridge id)kSecReturnData];
-    [keychainQuery setObject:(__bridge id)kSecMatchLimitOne forKey:(__bridge id)kSecMatchLimit];
-    if (SecItemCopyMatching((__bridge CFDictionaryRef)keychainQuery, (CFTypeRef *)&keyData) == errSecSuccess) {
+    [query setObject:(__bridge id)kCFBooleanTrue forKey:(__bridge id)kSecReturnData];
+    [query setObject:(__bridge id)kSecMatchLimitOne forKey:(__bridge id)kSecMatchLimit];
+    if (SecItemCopyMatching((__bridge CFDictionaryRef)query, (CFTypeRef *)&keyData) == errSecSuccess) {
         @try {
             value = [NSKeyedUnarchiver unarchiveObjectWithData:(__bridge NSData *)keyData];
         }
